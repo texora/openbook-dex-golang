@@ -32,6 +32,11 @@ type BookSide struct {
 	Nodes         OrderTreeNodes
 }
 
+type Orderbook struct {
+	Bids *BookSide
+	Asks *BookSide
+}
+
 type EventHeapHeader struct {
 	FreeHead uint16
 	UsedHead uint16
@@ -74,3 +79,12 @@ type AnyNode struct {
 	Data       [79]byte
 	ForceAlign uint64
 }
+
+type Decimal struct {
+	Flags uint32
+	Hi    uint32
+	Lo    uint32
+	Mid   uint32
+}
+
+type Side int

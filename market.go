@@ -1,6 +1,8 @@
 package openbookdexgolang
 
 import (
+	"math"
+
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
 )
@@ -104,4 +106,12 @@ type Market struct {
 	QuoteDepositTotal uint64
 
 	Reserved [128]byte
+}
+
+func (m *Market) MaxBaseLots() int64 {
+	return math.MaxInt64 / m.BaseLotSize
+}
+
+func (m *Market) MaxQuoteLots() int64 {
+	return math.MaxInt64 / m.QuoteLotSize
 }
