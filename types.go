@@ -1,6 +1,7 @@
 package openbookdexgolang
 
 import (
+	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
 )
 
@@ -25,18 +26,6 @@ type EventHeap struct {
 	Reserved [64]byte
 }
 
-type BookSide struct {
-	Roots         [2]OrderTreeRoot
-	ReservedRoots [4]OrderTreeRoot
-	Reserved      [256]byte
-	Nodes         OrderTreeNodes
-}
-
-type Orderbook struct {
-	Bids *BookSide
-	Asks *BookSide
-}
-
 type EventHeapHeader struct {
 	FreeHead uint16
 	UsedHead uint16
@@ -50,14 +39,18 @@ type OrderTreeRoot struct {
 	LeafCount uint32
 }
 
-type OrderTreeNodes struct {
-	OrderTreeType uint8
-	Padding       [3]byte
-	BumpIndex     uint32
-	FreeListLen   uint32
-	FreeListHead  NodeHandle
-	Reserved      [512]byte
-	Nodes         [MAX_ORDERTREE_NODES]AnyNode
+type OrderTreeIter struct {
+	OrderTree *OrderTreeNodes     // Pointer to OrderTreeNodes
+	Stack     []*InnerNode        // Slice of pointers to InnerNode
+	NextLeaf  *LeafNodeWithHandle // Struct to hold NodeHandle and *LeafNode
+	Left      int
+	Right     int
+}
+
+// LeafNodeWithHandle is a helper struct to store NodeHandle and LeafNode reference
+type LeafNodeWithHandle struct {
+	Handle   NodeHandle
+	LeafNode *LeafNode
 }
 
 type EventNode struct {
@@ -78,6 +71,29 @@ type AnyNode struct {
 	Tag        uint8
 	Data       [79]byte
 	ForceAlign uint64
+}
+
+type InnerNode struct {
+	Tag                 uint8
+	Padding             [3]byte
+	PrefixLen           uint32
+	Key                 bin.Uint128
+	Children            [2]NodeHandle
+	ChildEarliestExpiry [2]uint64
+	Reserved            [40]byte
+}
+
+type LeafNode struct {
+	Tag           uint8
+	OwnerSlot     uint8
+	TimeInForce   uint16
+	Padding       [4]byte
+	Key           bin.Uint128
+	Owner         solana.PublicKey
+	Quantity      int64
+	Timestamp     uint64
+	PegLimit      int64
+	ClientOrderID uint64
 }
 
 type Decimal struct {

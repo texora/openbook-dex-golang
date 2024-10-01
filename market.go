@@ -1,11 +1,15 @@
 package openbookdexgolang
 
 import (
+	"errors"
 	"math"
+	"math/big"
 
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
 )
+
+const FEES_SCALE_FACTOR = 1000000
 
 type Market struct {
 	// PDA bump
@@ -114,4 +118,51 @@ func (m *Market) MaxBaseLots() int64 {
 
 func (m *Market) MaxQuoteLots() int64 {
 	return math.MaxInt64 / m.QuoteLotSize
+}
+
+func (m *Market) NativePriceToLot(price *big.Float) (int64, error) {
+	baseLotSize := new(big.Float).SetInt64(m.BaseLotSize)
+	quoteLotSize := new(big.Float).SetInt64(m.QuoteLotSize)
+
+	result := new(big.Float).Mul(price, baseLotSize)
+	result.Quo(result, quoteLotSize)
+
+	if !result.IsInt() {
+		return 0, errors.New("invalid oracle price")
+	}
+
+	intResult, _ := result.Int64()
+	return intResult, nil
+}
+
+func (m *Market) subtractTakerFees(quote int64) int64 {
+	quoteBig := big.NewInt(quote)
+	feeScaleFactor := big.NewInt(FEES_SCALE_FACTOR)
+	takerFee := big.NewInt(int64(m.TakerFee))
+
+	numerator := new(big.Int).Mul(quoteBig, feeScaleFactor)
+	denominator := new(big.Int).Add(feeScaleFactor, takerFee)
+
+	result := new(big.Int).Div(numerator, denominator)
+
+	return result.Int64()
+}
+
+func (m *Market) MakerRebateFloor(amount uint64) uint64 {
+	if m.MakerFee > 0 {
+		return 0
+	} else {
+		return m.unsignedMakerFeesFloor(amount)
+	}
+}
+
+func (m *Market) unsignedMakerFeesFloor(amount uint64) uint64 {
+	amountBig := new(big.Int).SetUint64(amount)
+	makerFeeBig := new(big.Int).SetInt64(int64(math.Abs(float64(m.MakerFee))))
+	feesScaleFactorBig := new(big.Int).SetInt64(FEES_SCALE_FACTOR)
+
+	result := new(big.Int).Mul(amountBig, makerFeeBig)
+	result.Div(result, feesScaleFactorBig)
+
+	return result.Uint64()
 }
