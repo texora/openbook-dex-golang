@@ -1,7 +1,10 @@
 package openbookdexgolang
 
 import (
+	"math"
 	"math/big"
+
+	"github.com/gagliardetto/solana-go"
 )
 
 const (
@@ -59,7 +62,7 @@ func AmountsFromBook(
 	}
 
 	// Placeholder for accounts array, if needed
-	accounts := make([]interface{}, 0) // Adjust based on what the accounts array should hold
+	accounts := make([]solana.PublicKey, 0) // Adjust based on what the accounts array should hold
 
 	// Call iterateBook, simulating the book iteration logic
 	totalBaseLotsTaken, totalQuoteLotsTaken, makersRebates, notEnoughLiquidity := IterateBook(
@@ -81,7 +84,7 @@ func AmountsFromBook(
 	return Amounts{
 		TotalBaseTakenNative:  totalBaseTakenNative,
 		TotalQuoteTakenNative: totalQuoteTakenNative,
-		Fee:                   makersRebates,
+		Fee:                   uint64(makersRebates),
 		NotEnoughLiquidity:    notEnoughLiquidity,
 	}, nil
 }
@@ -91,4 +94,81 @@ func (s Side) InvertSide() Side {
 		return Ask
 	}
 	return Bid
+}
+
+func IterateBook(
+	book Orderbook,
+	side Side,
+	maxBaseLots int64,
+	maxQuoteLots int64,
+	market *Market,
+	oraclePriceLots *int64,
+	nowTs uint64,
+	accounts *[]solana.PublicKey,
+) (int64, int64, int64, bool) {
+	var limit = MAXIMUM_TAKEN_ORDERS
+	var numberOfProcessedFillEvents = 0
+	var numberOfDroppedExpiredOrders = 0
+
+	var orderMaxBaseLots = maxBaseLots
+	var orderMaxQuoteLots int64
+	if side == Bid {
+		orderMaxQuoteLots = market.SubtractTakerFees(maxQuoteLots)
+	} else {
+		orderMaxQuoteLots = maxQuoteLots
+	}
+
+	var makerRebatesAcc int64
+	var remainingBaseLots = orderMaxBaseLots
+	var remainingQuoteLots = orderMaxQuoteLots
+	opposingBookSide := book.BookSide(side.InvertSide())
+	iter := opposingBookSide.IterAllIncludingInvalid(nowTs, oraclePriceLots)
+	for iter.Next() {
+		bestOpposing := iter.Item()
+		if !bestOpposing.IsValid() {
+			if numberOfDroppedExpiredOrders < DROP_EXPIRED_ORDER_LIMIT {
+				*accounts = append(*accounts, bestOpposing.Node.Owner)
+				numberOfDroppedExpiredOrders++
+			}
+			continue
+		}
+
+		if remainingBaseLots == 0 || remainingQuoteLots == 0 || limit == 0 {
+			break
+		}
+
+		bestOpposingPrice := bestOpposing.PriceLots
+		maxMatchByQuote := remainingQuoteLots / bestOpposingPrice
+		if maxMatchByQuote == 0 {
+			break
+		}
+
+		matchBaseLots := int64(math.Min(float64(remainingBaseLots), float64(bestOpposing.Node.Quantity)))
+		matchBaseLots = int64(math.Min(float64(matchBaseLots), float64(maxMatchByQuote)))
+		matchQuoteLots := matchBaseLots * bestOpposingPrice
+
+		makerRebatesAcc += int64(market.MakerRebateFloor(uint64(matchQuoteLots * market.QuoteLotSize)))
+
+		remainingBaseLots -= matchBaseLots
+		remainingQuoteLots -= matchQuoteLots
+
+		limit--
+
+		if numberOfProcessedFillEvents < FILL_EVENT_REMAINING_LIMIT {
+			*accounts = append(*accounts, bestOpposing.Node.Owner)
+			numberOfProcessedFillEvents++
+		}
+	}
+
+	totalBaseLotsTaken := orderMaxBaseLots - remainingBaseLots
+	totalQuoteLotsTaken := orderMaxQuoteLots - remainingQuoteLots
+
+	notEnoughLiquidity := false
+	if side == Ask {
+		notEnoughLiquidity = remainingBaseLots != 0
+	} else {
+		notEnoughLiquidity = remainingQuoteLots != 0
+	}
+
+	return totalBaseLotsTaken, totalQuoteLotsTaken, makerRebatesAcc, notEnoughLiquidity
 }

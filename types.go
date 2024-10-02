@@ -34,19 +34,6 @@ type EventHeapHeader struct {
 	SeqNum   uint64
 }
 
-type OrderTreeRoot struct {
-	MaybeNode NodeHandle
-	LeafCount uint32
-}
-
-type OrderTreeIter struct {
-	OrderTree *OrderTreeNodes     // Pointer to OrderTreeNodes
-	Stack     []*InnerNode        // Slice of pointers to InnerNode
-	NextLeaf  *LeafNodeWithHandle // Struct to hold NodeHandle and *LeafNode
-	Left      int
-	Right     int
-}
-
 // LeafNodeWithHandle is a helper struct to store NodeHandle and LeafNode reference
 type LeafNodeWithHandle struct {
 	Handle   NodeHandle
@@ -66,13 +53,6 @@ type AnyEvent struct {
 }
 
 type NodeHandle uint32
-
-type AnyNode struct {
-	Tag        uint8
-	Data       [79]byte
-	ForceAlign uint64
-}
-
 type InnerNode struct {
 	Tag                 uint8
 	Padding             [3]byte

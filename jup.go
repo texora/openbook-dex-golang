@@ -1,6 +1,8 @@
 package openbookdexgolang
 
 import (
+	"math/big"
+
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
 )
@@ -81,13 +83,13 @@ func (obm *OpenBookMarket) Quote(quoteParams *QuoteParams) (*Quote, error) {
 	}
 
 	// Calculate order amounts from the order book
-	orderAmounts, err := amountsFromBook(
+	orderAmounts, err := AmountsFromBook(
 		book,
 		side,
 		maxBaseLots,
 		maxQuoteLotsIncludingFees,
 		&obm.market,
-		obm.oraclePrice,
+		big.NewFloat(0).SetInt(obm.oraclePrice.BigInt()),
 		0,
 	)
 	if err != nil {
@@ -98,11 +100,11 @@ func (obm *OpenBookMarket) Quote(quoteParams *QuoteParams) (*Quote, error) {
 	var inAmount, outAmount int64
 	switch side {
 	case SideBid:
-		inAmount = orderAmounts.TotalQuoteTakenNative - orderAmounts.Fee
-		outAmount = orderAmounts.TotalBaseTakenNative
+		inAmount = int64(orderAmounts.TotalQuoteTakenNative - orderAmounts.Fee)
+		outAmount = int64(orderAmounts.TotalBaseTakenNative)
 	case SideAsk:
-		inAmount = orderAmounts.TotalBaseTakenNative
-		outAmount = orderAmounts.TotalQuoteTakenNative + orderAmounts.Fee
+		inAmount = int64(orderAmounts.TotalBaseTakenNative)
+		outAmount = int64(orderAmounts.TotalQuoteTakenNative + orderAmounts.Fee)
 	}
 
 	// Return the quote

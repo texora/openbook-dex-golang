@@ -121,10 +121,10 @@ func (m *Market) MaxQuoteLots() int64 {
 }
 
 func (m *Market) NativePriceToLot(price *big.Float) (int64, error) {
-	baseLotSize := new(big.Float).SetInt64(m.BaseLotSize)
-	quoteLotSize := new(big.Float).SetInt64(m.QuoteLotSize)
+	baseLotSize := big.NewFloat(float64(m.BaseLotSize))
+	quoteLotSize := big.NewFloat(float64(m.QuoteLotSize))
 
-	result := new(big.Float).Mul(price, baseLotSize)
+	result := price.Mul(price, baseLotSize)
 	result.Quo(result, quoteLotSize)
 
 	if !result.IsInt() {
@@ -140,10 +140,10 @@ func (m *Market) subtractTakerFees(quote int64) int64 {
 	feeScaleFactor := big.NewInt(FEES_SCALE_FACTOR)
 	takerFee := big.NewInt(int64(m.TakerFee))
 
-	numerator := new(big.Int).Mul(quoteBig, feeScaleFactor)
-	denominator := new(big.Int).Add(feeScaleFactor, takerFee)
+	numerator := quoteBig.Mul(quoteBig, feeScaleFactor)
+	denominator := feeScaleFactor.Add(feeScaleFactor, takerFee)
 
-	result := new(big.Int).Div(numerator, denominator)
+	result := quoteBig.Div(numerator, denominator)
 
 	return result.Int64()
 }
@@ -157,12 +157,16 @@ func (m *Market) MakerRebateFloor(amount uint64) uint64 {
 }
 
 func (m *Market) unsignedMakerFeesFloor(amount uint64) uint64 {
-	amountBig := new(big.Int).SetUint64(amount)
-	makerFeeBig := new(big.Int).SetInt64(int64(math.Abs(float64(m.MakerFee))))
-	feesScaleFactorBig := new(big.Int).SetInt64(FEES_SCALE_FACTOR)
+	amountBig := big.NewInt(int64(amount))
+	makerFeeBig := big.NewInt(int64(math.Abs(float64(m.MakerFee))))
+	feesScaleFactorBig := big.NewInt(FEES_SCALE_FACTOR)
 
-	result := new(big.Int).Mul(amountBig, makerFeeBig)
+	result := amountBig.Mul(amountBig, makerFeeBig)
 	result.Div(result, feesScaleFactorBig)
 
 	return result.Uint64()
+}
+
+func (m *Market) SubtractTakerFees(quote int64) int64 {
+	return int64((float64(quote) * float64(FEES_SCALE_FACTOR)) / (float64(FEES_SCALE_FACTOR) + float64(m.TakerFee)))
 }

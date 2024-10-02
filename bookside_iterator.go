@@ -7,10 +7,10 @@ type BookSideIter struct {
 	OraclePriceLots  *int64         // Pointer to int64 to represent Option<i64>
 }
 
-func NewBookSideIter(bookSide *BookSide, nowTs uint64, oraclePriceLots *int64) *BookSideIter {
+func newBookSideIter(bookSide *BookSide, nowTs uint64, oraclePriceLots *int64) *BookSideIter {
 	return &BookSideIter{
-		FixedIter:        bookSide.Nodes.Iter(bookSide.Root(FixedOrderTree)),
-		OraclePeggedIter: bookSide.Nodes.Iter(bookSide.Root(OraclePeggedOrderTree)),
+		FixedIter:        bookSide.Nodes.iter(bookSide.root(FixedOrderTree)),
+		OraclePeggedIter: bookSide.Nodes.iter(bookSide.root(OraclePeggedOrderTree)),
 		NowTs:            nowTs,
 		OraclePriceLots:  oraclePriceLots,
 	}
