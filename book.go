@@ -172,3 +172,14 @@ func IterateBook(
 
 	return totalBaseLotsTaken, totalQuoteLotsTaken, makerRebatesAcc, notEnoughLiquidity
 }
+
+func (s Side) IsPriceBetter(lhs int64, rhs int64) bool {
+	switch s {
+	case Bid:
+		return lhs > rhs
+	case Ask:
+		return lhs < rhs
+	default:
+		return false
+	}
+}

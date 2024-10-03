@@ -63,19 +63,6 @@ type InnerNode struct {
 	Reserved            [40]byte
 }
 
-type LeafNode struct {
-	Tag           uint8
-	OwnerSlot     uint8
-	TimeInForce   uint16
-	Padding       [4]byte
-	Key           bin.Uint128
-	Owner         solana.PublicKey
-	Quantity      int64
-	Timestamp     uint64
-	PegLimit      int64
-	ClientOrderID uint64
-}
-
 type Decimal struct {
 	Flags uint32
 	Hi    uint32

@@ -62,3 +62,46 @@ func (iter *OrderTreeIter) findLeftmostLeaf(start NodeHandle) *struct {
 		}
 	}
 }
+
+func (iter *OrderTreeIter) Side() Side {
+	if iter.Left == 1 {
+		return Bid
+	}
+	return Ask
+}
+
+// Peek returns the next leaf node if available.
+func (iter *OrderTreeIter) Peek() *struct {
+	handle NodeHandle
+	leaf   *LeafNode
+} {
+	return iter.NextLeaf
+}
+
+func (iter *OrderTreeIter) Next() *struct {
+	handle NodeHandle
+	leaf   *LeafNode
+} {
+	// If there's no next leaf, iteration is done
+	if iter.NextLeaf == nil {
+		return nil
+	}
+
+	// Store the current leaf to return
+	currentLeaf := iter.NextLeaf
+
+	// Update the next leaf by popping from the stack
+	if len(iter.Stack) == 0 {
+		iter.NextLeaf = nil
+	} else {
+		inner := iter.Stack[len(iter.Stack)-1]
+		iter.Stack = iter.Stack[:len(iter.Stack)-1] // Pop from stack
+		start := inner.Children[iter.Right]
+
+		// Find the leftmost leaf starting from the right child
+		iter.NextLeaf = iter.findLeftmostLeaf(start)
+	}
+
+	// Return the current leaf and some placeholder NodeHandle
+	return currentLeaf
+}
